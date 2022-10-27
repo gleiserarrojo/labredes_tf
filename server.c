@@ -10,6 +10,8 @@
 /* Diretorios: net, netinet, linux contem os includes que descrevem */
 /* as estruturas de dados do header dos protocolos   	  	        */
 
+#include <netpacket/packet.h>
+#include <net/ethernet.h>
 #include <net/if.h>  //estrutura ifr
 #include <netinet/ether.h> //header ethernet
 #include <netinet/in.h> //definicao de protocolos
@@ -73,13 +75,90 @@ void monta_ipv4(uint8_t *src_ip, uint8_t *dest_ip) {
     temp[10] = ret >> 8;
     temp[11] = ret;
 
-    memcpy(buff2+15, temp, 20);
-    printf("buff2: %s", buff2);
+    memcpy(buff2+14, temp, 20);
 
+    printf("buff2: \n");
+    for (int i = 0; i < sizeof(buff2); i++) {
+        printf("%.2x ", buff2[i]);
+    }
+    printf("\n");
 }
 
-void monta_udp(uint8_t *src_port, uint8_t *dest_port){
-    
+void monta_udp(uint8_t *src_port, uint8_t *dest_port) {
+    uint8_t temp[8];
+    uint16_t ret;
+
+    // porta origem
+    temp[0] = src_port[0];
+    temp[1] = src_port[1];
+
+    // porta destino
+    temp[2] = dest_port[0];
+    temp[3] = dest_port[1];
+
+    // length: 330
+    temp[4] = 0x01;
+    temp[5] = 0x4a;
+
+    // Checksum 
+    temp[6] = 0x00;
+    temp[7] = 0x00;
+
+    ret = in_cksum((unsigned short *)temp, 8);
+
+    // Coloca checksum no header 
+    temp[6] = ret >> 8;;
+    temp[7] = ret;
+
+    memcpy(buff2+34, temp, 8);
+
+    printf("buff2: \n");
+    for (int i = 0; i < sizeof(buff2); i++) {
+        printf("%.2x ", buff2[i]);
+    }
+    printf("\n");
+}
+
+void monta_bootp(uint8_t *dest_ip){
+    uint8_t temp[322];
+
+    // Message Type
+    temp[0] = 0x02;
+
+    // Hardware Type
+    temp[1] = 0x01;
+
+    // Hardware Address Length
+    temp[2] = 0x06;
+
+    // Hops
+    temp[3] = 0x00;
+
+    // ID
+    temp[4] = 0x3e;
+    temp[5] = 0xfc;
+    temp[6] = 0x5b;
+    temp[7] = 0xc3;
+
+    // Seconds elapsed
+    temp[8] = 0x00;
+    temp[9] = 0x00;
+
+    // Boop flags
+    temp[10] = 0x00;
+    temp[11] = 0x00;
+
+    // Client IP address:
+    temp[12] = 0x00;
+    temp[13] = 0x00;
+    temp[14] = 0x00;
+    temp[15] = 0x00;
+
+    // Your IP Address
+    temp[16] = dest_ip[0];
+    temp[17] = dest_ip[1];
+    temp[18] = dest_ip[2];
+    temp[19] = dest_ip[3];
 }
 
 int main(){
@@ -113,6 +192,23 @@ int main(){
 
 	ioctl(sockd, SIOCSIFFLAGS, &ifr);
 
+    // Cria socket para mandar msg
+    int sockFd = 0;
+    int retValue = 0;
+    struct sockaddr_ll destAddr;
+    short int etherTypeT = htons(0x8200);
+    
+    /* Identicacao de qual maquina (MAC) deve receber a mensagem enviada no socket. */
+    destAddr.sll_family = htons(PF_PACKET);
+    destAddr.sll_protocol = htons(ETH_P_ALL);
+    destAddr.sll_halen = 6;
+    destAddr.sll_ifindex = 2;  /* indice da interface pela qual os pacotes serao enviados. Eh necessario conferir este valor. */
+
+    if((sockFd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        printf("Erro na criacao do socket.\n");
+        exit(1);
+    }
+
 	// recepcao de pacotes
 	while (1) {
    		recv(sockd,(char *) &buff1, sizeof(buff1), 0x0);
@@ -124,28 +220,39 @@ int main(){
 
             if(destination_port == 0x0043){   // Se é pacote DHCP para o servidor
 
+                printf("achei dhcp\n");
+
                 uint8_t dhcp_type = buff1[284];
                 uint8_t mac_src[6] = MAC_SRC;
 
                 switch(dhcp_type){
                     case 0x01:                     // quando for dhcp discovery manda um offer
+                        printf("é discovery\n");
+                        
+                        memcpy(&(destAddr.sll_addr), mac_src, sizeof(mac_src));
+
                         for (int i = 0; i < 6; i++) {   // buffer de saida recebe mac destino e origem
                             buff2[i] = buff1[i + 6];
                             buff2[i+6] = mac_src[i];
                         }
 
                         // Ethernet type
-                        buff2[13] = 0x08;
-                        buff2[14] = 0x00;
+                        buff2[12] = 0x08;
+                        buff2[13] = 0x00;
 
                         uint8_t src_ip[4] = {0x0a, 0x20, 0x8f, 0x18};
-                        uint8_t dest_ip[4] = {0x0a, 0x20, 0x8f, 0x20};
+                        uint8_t dest_ip[4] = {0x0a, 0x20, 0x8f, 0x45};
 
                         monta_ipv4(src_ip, dest_ip);
 
                         uint8_t src_port[2] = {0x00, 0x43};
                         uint8_t dest_port[2] = {0x00, 0x44};
+
                         monta_udp(src_port, dest_port);
+
+                        monta_bootp(dest_ip);
+
+                        sendto(sockd, buff2, sizeof(buff2), 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll));
                     break;
 
                     default:
