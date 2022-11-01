@@ -77,11 +77,11 @@ void monta_ipv4(uint8_t *src_ip, uint8_t *dest_ip) {
 
     memcpy(buff2+14, temp, 20);
 
-    printf("buff2: \n");
-    for (int i = 0; i < sizeof(buff2); i++) {
-        printf("%.2x ", buff2[i]);
-    }
-    printf("\n");
+    // printf("buff2: \n");
+    // for (int i = 0; i < sizeof(buff2); i++) {
+    //     printf("%.2x ", buff2[i]);
+    // }
+    // printf("\n");
 }
 
 void monta_udp(uint8_t *src_port, uint8_t *dest_port) {
@@ -112,15 +112,15 @@ void monta_udp(uint8_t *src_port, uint8_t *dest_port) {
 
     memcpy(buff2+34, temp, 8);
 
-    printf("buff2: \n");
-    for (int i = 0; i < sizeof(buff2); i++) {
-        printf("%.2x ", buff2[i]);
-    }
-    printf("\n");
+    // printf("buff2: \n");
+    // for (int i = 0; i < sizeof(buff2); i++) {
+    //     printf("%.2x ", buff2[i]);
+    // }
+    // printf("\n");
 }
 
-void monta_bootp(uint8_t *dest_ip){
-    uint8_t temp[322];
+void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
+    uint8_t temp[322] = {0};
 
     // Message Type
     temp[0] = 0x02;
@@ -159,6 +159,139 @@ void monta_bootp(uint8_t *dest_ip){
     temp[17] = dest_ip[1];
     temp[18] = dest_ip[2];
     temp[19] = dest_ip[3];
+
+    // Next Server IP Address
+    temp[20] = src_ip[0];
+    temp[21] = src_ip[1];
+    temp[22] = src_ip[2];
+    temp[23] = src_ip[3];
+    
+    // Gateway IP Address
+    temp[24] = src_ip[0];
+    temp[25] = src_ip[1];
+    temp[26] = src_ip[2];
+    temp[27] = src_ip[3];
+
+    // Client MAC Address
+    temp[28] = dest_mac[0];
+    temp[29] = dest_mac[1];
+    temp[30] = dest_mac[2];
+    temp[31] = dest_mac[3];
+    temp[32] = dest_mac[4];
+    temp[33] = dest_mac[5];
+
+    // Client HW Address Padding
+    temp[34] = 0x00;
+    temp[35] = 0x00;
+    temp[36] = 0x00;
+    temp[37] = 0x00;
+    temp[38] = 0x00;
+    temp[39] = 0x00;
+    temp[40] = 0x00;
+    temp[41] = 0x00;
+    temp[42] = 0x00;
+    temp[43] = 0x00;
+
+    // Server host name (not given)
+    for (int i = 0; i < 64; i++) {
+        temp[i + 44] = 0x00;
+    }
+    
+    // Boot file name (not given)
+    for (int i = 0; i < 128; i++) {
+        temp[i + 108] = 0x00;
+    }
+    
+    // Magic Cookie
+    temp[235] = 0x63;
+    temp[236] = 0x82;
+    temp[237] = 0x53;
+    temp[238] = 0x63;
+
+    // DHCP Message Type (Offer)
+    temp[239] = 0x35;
+    temp[240] = 0x01;
+    temp[241] = 0x02;
+
+    // Subnet Mask
+    temp[242] = 0x01;
+    temp[243] = 0x04;
+    temp[244] = 0xff;
+    temp[245] = 0xff;
+    temp[246] = 0xff;
+    temp[247] = 0x00;
+
+    // Renewal Time Value
+    temp[248] = 0x3a;
+    temp[249] = 0x04;
+    temp[250] = 0x00;
+    temp[251] = 0x00;
+    temp[252] = 0x38;
+    temp[253] = 0x40;
+
+    // Rebinding Time Value
+    temp[254] = 0x3b;
+    temp[255] = 0x04;
+    temp[256] = 0x00;
+    temp[257] = 0x00;
+    temp[258] = 0x62;
+    temp[259] = 0x70;
+
+    // IP Address Lease Time
+    temp[260] = 0x33;
+    temp[261] = 0x04;
+    temp[262] = 0x00;
+    temp[263] = 0x00;
+    temp[264] = 0x70;
+    temp[265] = 0x80;
+
+    // DHCP Server Identifier
+    temp[266] = 0x36;
+    temp[267] = 0x04;
+    temp[268] = 0x0a;
+    temp[269] = 0x28;
+    temp[270] = 0x30;
+    temp[271] = 0xc8;
+
+    // Router
+    temp[272] = 0x03;
+    temp[273] = 0x04;
+    temp[274] = src_ip[0];
+    temp[275] = src_ip[1];
+    temp[276] = src_ip[2];
+    temp[277] = src_ip[3];
+
+    // Domain Name
+    temp[278] = 0x0f;
+    temp[279] = 0x12;
+    sprintf(temp+280, "xupinga.server.br");
+
+    // Domain Name Server
+    temp[298] = 0x06;
+    temp[299] = 0x04;
+    temp[300] = src_ip[0];
+    temp[301] = src_ip[1];
+    temp[302] = src_ip[2];
+    temp[303] = src_ip[3];
+
+    // Netbios over TCP/IP Server
+    temp[304] = 0x2c;
+    temp[305] = 0x04;
+    temp[306] = 0x00;
+    temp[307] = 0x00;
+    temp[308] = 0x00;
+    temp[309] = 0x00;
+
+    // End
+    temp[310] = 0xff;
+
+    // printf("Teste monta_udp\nBuff2:\n");
+    // for (int i = 0; i < sizeof(temp); i++) {
+    //     printf("[%d]:%.2x ",i , temp[i]);
+    // }
+    // printf("\n");
+
+    memcpy(buff2+42, temp, 311);
 }
 
 int main(){
@@ -250,7 +383,7 @@ int main(){
 
                         monta_udp(src_port, dest_port);
 
-                        monta_bootp(dest_ip);
+                        monta_bootp(src_ip, dest_ip, mac_src);
 
                         sendto(sockd, buff2, sizeof(buff2), 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll));
                     break;
