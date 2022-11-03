@@ -30,6 +30,7 @@
 #define MAC_ADDR_LEN 6
 
 unsigned char buff2[BUFFSIZE]; // buffer de saida
+typedef enum { OFFER, ACK } dhcp_response;
 
 void monta_ipv4(uint8_t *src_ip, uint8_t *dest_ip) {
     uint8_t temp[20];
@@ -78,8 +79,8 @@ void monta_ipv4(uint8_t *src_ip, uint8_t *dest_ip) {
     ret = in_cksum((unsigned short *)temp, 20);
 
     // Coloca checksum no header
-    temp[10] = ret >> 8;
-    temp[11] = ret;
+    temp[10] = ret;
+    temp[11] = ret >> 8;
 
     memcpy(buff2+14, temp, 20);
 
@@ -105,16 +106,16 @@ void monta_udp(uint8_t *src_port, uint8_t *dest_port) {
     // length: 320
     temp[4] = 0x01;
     temp[5] = 0x40;
-
+    
     // Checksum 
     temp[6] = 0x00;
     temp[7] = 0x00;
 
-    ret = in_cksum((unsigned short *)temp, 8);
+    // ret = in_cksum((unsigned short *)temp, 8);
 
-    // Coloca checksum no header 
-    temp[6] = ret >> 8;;
-    temp[7] = ret;
+    // // Coloca checksum no header 
+    // temp[6] = ret;
+    // temp[7] = ret >> 8;
 
     memcpy(buff2+34, temp, 8);
 
@@ -125,7 +126,8 @@ void monta_udp(uint8_t *src_port, uint8_t *dest_port) {
     // printf("\n");
 }
 
-void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
+void monta_bootp(dhcp_response resp, uint8_t *transaction_id, uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
+
     uint8_t temp[322] = {0};
 
     // Message Type
@@ -141,10 +143,10 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
     temp[3] = 0x00;
 
     // ID
-    temp[4] = 0x3e;
-    temp[5] = 0xfc;
-    temp[6] = 0x5b;
-    temp[7] = 0xc3;
+    temp[4] = transaction_id[0];
+    temp[5] = transaction_id[1];
+    temp[6] = transaction_id[2];
+    temp[7] = transaction_id[3];
 
     // Seconds elapsed
     temp[8] = 0x00;
@@ -166,17 +168,32 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
     temp[18] = dest_ip[2];
     temp[19] = dest_ip[3];
 
-    // Next Server IP Address
-    temp[20] = src_ip[0];
-    temp[21] = src_ip[1];
-    temp[22] = src_ip[2];
-    temp[23] = src_ip[3];
-    
-    // Gateway IP Address
-    temp[24] = src_ip[0];
-    temp[25] = src_ip[1];
-    temp[26] = src_ip[2];
-    temp[27] = src_ip[3];
+    switch (resp) {
+    case OFFER:
+        // Next Server IP Address
+        temp[20] = src_ip[0];
+        temp[21] = src_ip[1];
+        temp[22] = src_ip[2];
+        temp[23] = src_ip[3];
+        break;
+
+    case ACK:
+        // Next Server IP Address
+        temp[20] = 0x00;
+        temp[21] = 0x00;
+        temp[22] = 0x00;
+        temp[23] = 0x00;
+        break;
+
+    default:
+        break;
+    }
+
+    // Realy Agent IP Address
+    temp[24] = 0x00;
+    temp[25] = 0x00;
+    temp[26] = 0x00;
+    temp[27] = 0x00;
 
     // Client MAC Address
     temp[28] = dest_mac[0];
@@ -214,10 +231,24 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
     temp[238] = 0x53;
     temp[239] = 0x63;
 
-    // DHCP Message Type (Offer)
-    temp[240] = 0x35;
-    temp[241] = 0x01;
-    temp[242] = 0x02;
+    switch (resp) {
+    case OFFER:
+        // DHCP Message Type (Offer)
+        temp[240] = 0x35;
+        temp[241] = 0x01;
+        temp[242] = 0x02;
+        break;
+
+        case ACK:
+        // DHCP Message Type (Ack)
+        temp[240] = 0x35;
+        temp[241] = 0x01;
+        temp[242] = 0x05;        
+        break;
+
+    default:
+        break;
+    }
 
     // Subnet Mask
     temp[243] = 0x01;
@@ -254,10 +285,10 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
     // DHCP Server Identifier
     temp[267] = 0x36;
     temp[268] = 0x04;
-    temp[269] = 0x0a;
-    temp[270] = 0x28;
-    temp[271] = 0x30;
-    temp[272] = 0xc8;
+    temp[269] = src_ip[0];
+    temp[270] = src_ip[1];
+    temp[271] = src_ip[2];
+    temp[272] = src_ip[3];
 
     // Router
     temp[273] = 0x03;
@@ -309,7 +340,7 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
     temp[311] = 0xff;
 
     memcpy(buff2+42, temp, 312);
-
+    
     // printf("Teste monta_udp\nBuff2:\n");
     // for (int i = 0; i < 353; i++) {
     //     printf("[%.4x]:%.2x ",i , buff2[i]);
@@ -322,6 +353,7 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
 }
 
 typedef unsigned char MacAddress[6];
+
 
 int main(){
     // Atencao!! Confira no /usr/include do seu sisop o nome correto
@@ -410,12 +442,51 @@ int main(){
 
                 uint8_t dhcp_type = buff1[284];
                 uint8_t mac_src[6] = MAC_SRC;
+                uint8_t mac_dest[6];
+                uint8_t transaction_id[4] = {0};
+                uint8_t src_ip[4] = {0x0a, 0x20, 0x8f, 0x18};
+                uint8_t dest_ip[4] = {0x0a, 0x20, 0x8f, 0x45};
+                uint8_t src_port[2] = {0x00, 0x43};
+                uint8_t dest_port[2] = {0x00, 0x44};
+                dhcp_response resp;
 
                 switch(dhcp_type){
                     case 0x01:                     // quando for dhcp discovery manda um offer
+                        resp = OFFER;
+
                         printf("é discovery\n");
                         
                         memcpy(&(destAddr.sll_addr), mac_src, sizeof(mac_src));
+
+                        for (int i = 0; i < 6; i++) {   // buffer de saida recebe mac destino e origem
+                            buff2[i] = buff1[i + 6];
+                            mac_dest[i] = buff1[i + 6];
+                            buff2[i+6] = mac_src[i];
+                        }
+
+                        // Ethernet type
+                        buff2[12] = 0x08;
+                        buff2[13] = 0x00;
+                        
+                        monta_ipv4(src_ip, dest_ip);
+
+                        monta_udp(src_port, dest_port);
+
+                        transaction_id[0] = buff1[46];
+                        transaction_id[1] = buff1[47];
+                        transaction_id[2] = buff1[48];
+                        transaction_id[3] = buff1[49];
+
+                        monta_bootp(resp, transaction_id, src_ip, dest_ip, mac_dest);
+
+                        if (sendto(sockd, buff2, 354, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
+                            printf("Erro no send\n");
+                        }
+                    break;
+
+                    case 0x03:
+                        resp = ACK;
+                        printf("é request\n");
 
                         for (int i = 0; i < 6; i++) {   // buffer de saida recebe mac destino e origem
                             buff2[i] = buff1[i + 6];
@@ -426,22 +497,19 @@ int main(){
                         buff2[12] = 0x08;
                         buff2[13] = 0x00;
 
-                        uint8_t src_ip[4] = {0x0a, 0x20, 0x8f, 0x18};
-                        uint8_t dest_ip[4] = {0x0a, 0x20, 0x8f, 0x45};
-                        
                         monta_ipv4(src_ip, dest_ip);
-
-                        uint8_t src_port[2] = {0x00, 0x43};
-                        uint8_t dest_port[2] = {0x00, 0x44};
 
                         monta_udp(src_port, dest_port);
 
-                        monta_bootp(src_ip, dest_ip, mac_src);
+                        transaction_id[0] = buff1[46];
+                        transaction_id[1] = buff1[47];
+                        transaction_id[2] = buff1[48];
+                        transaction_id[3] = buff1[49];
 
+                        monta_bootp(resp, transaction_id, src_ip, dest_ip, mac_dest);
                         if (sendto(sockd, buff2, 354, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
                             printf("Erro no send\n");
                         }
-
                     break;
 
                     default:
