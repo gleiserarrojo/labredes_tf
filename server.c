@@ -41,9 +41,9 @@ void monta_ipv4(uint8_t *src_ip, uint8_t *dest_ip) {
     // type of service
     temp[1] = 0x00;
 
-    // Total Lenght 350
+    // Total Lenght 340
     temp[2] = 0x01;
-    temp[3] = 0x5e;
+    temp[3] = 0x54;
 
     // Identification
     temp[4] = 0xfe;
@@ -102,9 +102,9 @@ void monta_udp(uint8_t *src_port, uint8_t *dest_port) {
     temp[2] = dest_port[0];
     temp[3] = dest_port[1];
 
-    // length: 330
+    // length: 320
     temp[4] = 0x01;
-    temp[5] = 0x4a;
+    temp[5] = 0x40;
 
     // Checksum 
     temp[6] = 0x00;
@@ -270,54 +270,54 @@ void monta_bootp(uint8_t *src_ip, uint8_t *dest_ip, uint8_t *dest_mac){
     // Domain Name
     temp[279] = 0x0f;
     temp[280] = 0x12;
-    temp[281] = 0x78;
-    temp[282] = 0x75;
-    temp[283] = 0x70;
-    temp[284] = 0x69;
-    temp[285] = 0x6e;
-    temp[286] = 0x67;
-    temp[287] = 0x61;
-    temp[288] = 0x2e;
-    temp[289] = 0x73;
-    temp[290] = 0x65;
-    temp[291] = 0x72;
-    temp[292] = 0x76;
-    temp[293] = 0x65;
-    temp[294] = 0x72;
-    temp[295] = 0x2e;
-    temp[296] = 0x62;
-    temp[297] = 0x72;
+    temp[281] = 'x';
+    temp[282] = 'u';
+    temp[283] = 'p';
+    temp[284] = 'i';
+    temp[285] = 'n';
+    temp[286] = 'g';
+    temp[287] = 'a';
+    temp[288] = 's';
+    temp[289] = '.';
+    temp[290] = 's';
+    temp[291] = 'e';
+    temp[292] = 'r';
+    temp[293] = 'v';
+    temp[294] = 'e';
+    temp[295] = 'r';
+    temp[296] = '.';
+    temp[297] = 'b';
+    temp[298] = 'r';
 
     // Domain Name Server
-    temp[298] = 0x06;
-    temp[299] = 0x04;
-    temp[300] = src_ip[0];
-    temp[301] = src_ip[1];
-    temp[302] = src_ip[2];
-    temp[303] = src_ip[3];
+    temp[299] = 0x06;
+    temp[300] = 0x04;
+    temp[301] = src_ip[0];
+    temp[302] = src_ip[1];
+    temp[303] = src_ip[2];
+    temp[304] = src_ip[3];
 
     // Netbios over TCP/IP Server
-    temp[304] = 0x2c;
-    temp[305] = 0x04;
-    temp[306] = 0x00;
+    temp[305] = 0x2c;
+    temp[306] = 0x04;
     temp[307] = 0x00;
     temp[308] = 0x00;
     temp[309] = 0x00;
+    temp[310] = 0x00;
 
     // End
-    temp[310] = 0xff;
+    temp[311] = 0xff;
 
-    memcpy(buff2+42, temp, 311);
+    memcpy(buff2+42, temp, 312);
 
-    printf("Teste monta_udp\nBuff2:\n");
-    for (int i = 0; i < 352; i++) {
-        printf("[%.4x]:%.2x ",i , buff2[i]);
-        if ((i & 0xf) == 0xf) {
-            printf("\n");
-        }
-        
-    }
-    printf("\n");
+    // printf("Teste monta_udp\nBuff2:\n");
+    // for (int i = 0; i < 353; i++) {
+    //     printf("[%.4x]:%.2x ",i , buff2[i]);
+    //     if ((i & 0xf) == 0xf) {
+    //         printf("\n");
+    //     }
+    // }
+    // printf("\n");
 
 }
 
@@ -362,7 +362,7 @@ int main(){
     short int etherTypeT = htons(0x8200);
 
     /* Configura MAC Origem e Destino */
-    MacAddress localMac = {0xa4, 0x1f, 0x72, 0xf5, 0x90, 0x7f};
+    MacAddress localMac = MAC_SRC;
     MacAddress destMac = {0xa4, 0x1f, 0x72, 0xf5, 0x90, 0x14};
 
     /* Criacao do socket. Todos os pacotes devem ser construidos a partir do protocolo Ethernet. */
@@ -381,19 +381,19 @@ int main(){
 
 
     /* Cabecalho Ethernet */
-    memcpy(buffer, destMac, MAC_ADDR_LEN);
-    memcpy((buffer+MAC_ADDR_LEN), localMac, MAC_ADDR_LEN);
-    memcpy((buffer+(2*MAC_ADDR_LEN)), &(etherTypeT), sizeof(etherTypeT));
+    // memcpy(buffer, destMac, MAC_ADDR_LEN);
+    // memcpy((buffer+MAC_ADDR_LEN), localMac, MAC_ADDR_LEN);
+    // memcpy((buffer+(2*MAC_ADDR_LEN)), &(etherTypeT), sizeof(etherTypeT));
 
     /* Add some data */
-    memcpy((buffer+ETHERTYPE_LEN+(2*MAC_ADDR_LEN)), dummyBuf, 50);
+    // memcpy((buffer+ETHERTYPE_LEN+(2*MAC_ADDR_LEN)), dummyBuf, 50);
 
     /* Envia pacotes de 64 bytes */
-    if((retValue = sendto(sockFd, buffer, 64, 0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll))) < 0) {
-       printf("ERROR! sendto() \n");
-       exit(1);
-    }
-    printf("Send success (%d).\n", retValue);
+    // if((retValue = sendto(sockFd, buffer, 64, 0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll))) < 0) {
+    //    printf("ERROR! sendto() \n");
+    //    exit(1);
+    // }
+    // printf("Send success (%d).\n", retValue);
 
 	// recepcao de pacotes
 	while (1) {
@@ -429,11 +429,6 @@ int main(){
                         uint8_t src_ip[4] = {0x0a, 0x20, 0x8f, 0x18};
                         uint8_t dest_ip[4] = {0x0a, 0x20, 0x8f, 0x45};
                         
-                        // Envio só Ethernet
-                        if (sendto(sockd, buff2, 352, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
-                            printf("Erro no send\n");
-                        }
-
                         monta_ipv4(src_ip, dest_ip);
 
                         uint8_t src_port[2] = {0x00, 0x43};
@@ -443,9 +438,9 @@ int main(){
 
                         monta_bootp(src_ip, dest_ip, mac_src);
 
-                        // if (sendto(sockd, buff2, 352, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
-                        //     printf("Erro no send\n");
-                        // }
+                        if (sendto(sockd, buff2, 354, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
+                            printf("Erro no send\n");
+                        }
 
                     break;
 
