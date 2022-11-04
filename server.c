@@ -22,6 +22,7 @@
 
 #include <netinet/in_systm.h> //tipos de dados
 #include "checksum.h"
+#include "sniffer.h"
 
 #define BUFFSIZE 1518
 #define MAC_SRC {0xa4, 0x1f, 0x72, 0xf5, 0x90, 0x7f}
@@ -438,7 +439,7 @@ int main(){
 
             if(destination_port == 0x0043){   // Se é pacote DHCP para o servidor
 
-                printf("achei dhcp\n");
+                // printf("achei dhcp\n");
 
                 uint8_t dhcp_type = buff1[284];
                 uint8_t mac_src[6] = MAC_SRC;
@@ -454,7 +455,7 @@ int main(){
                     case 0x01:                     // quando for dhcp discovery manda um offer
                         resp = OFFER;
 
-                        printf("é discovery\n");
+                        printf("DHCP Discovery from: ");
                         
                         memcpy(&(destAddr.sll_addr), mac_src, sizeof(mac_src));
 
@@ -462,7 +463,15 @@ int main(){
                             buff2[i] = buff1[i + 6];
                             mac_dest[i] = buff1[i + 6];
                             buff2[i+6] = mac_src[i];
+
+                            if(i!=5) {
+                                printf("%.2x:", buff1[i + 6]);
+                            }
+                            else {
+                                printf("%.2x", buff1[i + 6]);
+                            }
                         }
+                        printf("\n");
 
                         // Ethernet type
                         buff2[12] = 0x08;
@@ -482,16 +491,29 @@ int main(){
                         if (sendto(sockd, buff2, 354, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
                             printf("Erro no send\n");
                         }
+                        else {
+                            printf("DHCP Offer sended\n");
+                        }
                     break;
 
                     case 0x03:
                         resp = ACK;
-                        printf("é request\n");
+
+                        printf("DHCP Request from: ");
 
                         for (int i = 0; i < 6; i++) {   // buffer de saida recebe mac destino e origem
                             buff2[i] = buff1[i + 6];
+                            mac_dest[i] = buff1[i + 6];
                             buff2[i+6] = mac_src[i];
+
+                            if(i!=5) {
+                                printf("%.2x:", buff1[i + 6]);
+                            }
+                            else {
+                                printf("%.2x", buff1[i + 6]);
+                            }
                         }
+                        printf("\n");
 
                         // Ethernet type
                         buff2[12] = 0x08;
@@ -510,12 +532,18 @@ int main(){
                         if (sendto(sockd, buff2, 354, 0x0, (struct sockaddr *)&(destAddr), sizeof(struct sockaddr_ll)) == -1) {
                             printf("Erro no send\n");
                         }
+                        else {
+                            printf("DHCP ACK sended\n");
+                        }
                     break;
 
                     default:
                     break;
                 }
                 
+            }
+            else {
+                sniffer(buff1);
             }
         }
     }

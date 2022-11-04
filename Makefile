@@ -1,5 +1,5 @@
 all:
-	gcc server.c checksum.c -o s
+	gcc server.c checksum.c sniffer.c -o s
 
 clean:
 	rm -rf s
